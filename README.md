@@ -10,6 +10,8 @@ all needed patterns for creating a production REST API like:
  - Testing
  - Database interfacing
  - Caching
+ - File uploads
+ - Email delivery
 
 ## Installation
 

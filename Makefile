@@ -1,10 +1,13 @@
 BIN = ./bin/auth
 DIR = ./cmd
 
+swagger:
+	swag init --dir ${DIR} --output ${DIR}/docs
+
 install:
 	go install
 
-build:
+build: swagger
 	go build -o ${BIN} ${DIR}
 
 dev:

@@ -1,0 +1,17 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Example user auth service",
+        "title": "Auth service",
+        "termsOfService": "http://swagger.io/terms/",
+        "contact": {},
+        "license": {
+            "name": "MIT",
+            "url": "https://opensource.org/license/mit"
+        },
+        "version": "1.0"
+    },
+    "host": "localhost:1323",
+    "basePath": "/v1",
+    "paths": {}
+}

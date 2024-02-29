@@ -1,0 +1,13 @@
+basePath: /v1
+host: localhost:1323
+info:
+  contact: {}
+  description: Example user auth service
+  license:
+    name: MIT
+    url: https://opensource.org/license/mit
+  termsOfService: http://swagger.io/terms/
+  title: Auth service
+  version: "1.0"
+paths: {}
+swagger: "2.0"

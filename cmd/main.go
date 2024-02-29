@@ -23,10 +23,8 @@ func init() {
 // @version 1.0
 // @description Example user auth service
 // @termsOfService http://swagger.io/terms/
-
 // @license.name MIT
 // @license.url https://opensource.org/license/mit
-
 // @host localhost:1323
 // @BasePath /v1
 func main() {

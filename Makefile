@@ -1,6 +1,9 @@
 BIN = ./bin/auth
 DIR = ./cmd
 
+install:
+	go install
+
 build:
 	go build -o ${BIN} ${DIR}
 

@@ -13,5 +13,19 @@
     },
     "host": "localhost:1323",
     "basePath": "/v1",
-    "paths": {}
+    "paths": {
+        "/status": {
+            "get": {
+                "description": "Check the status of the server",
+                "tags": [
+                    "Health"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK"
+                    }
+                }
+            }
+        }
+    }
 }

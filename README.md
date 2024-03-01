@@ -12,6 +12,7 @@ all needed patterns for creating a production REST API like:
  - Caching
  - File uploads
  - Email delivery
+ - Rate limiting
 
 ## Installation
 

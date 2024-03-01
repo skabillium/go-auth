@@ -1,10 +1,22 @@
 basePath: /v1
 definitions:
+  auth.CreateUserRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
   auth.CreateUserResponse:
     properties:
       email:
         type: string
       id:
+        type: string
+      token:
         type: string
     type: object
 host: localhost:1323
@@ -21,6 +33,13 @@ paths:
   /auth/register:
     post:
       description: Register a new user
+      parameters:
+      - description: User credentials
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.CreateUserRequest'
       responses:
         "201":
           description: Created

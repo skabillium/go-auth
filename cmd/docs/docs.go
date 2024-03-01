@@ -26,6 +26,17 @@ const docTemplate = `{
                 "tags": [
                     "Auth"
                 ],
+                "parameters": [
+                    {
+                        "description": "User credentials",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.CreateUserRequest"
+                        }
+                    }
+                ],
                 "responses": {
                     "201": {
                         "description": "Created",
@@ -51,6 +62,21 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "auth.CreateUserRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.CreateUserResponse": {
             "type": "object",
             "properties": {
@@ -58,6 +84,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "id": {
+                    "type": "string"
+                },
+                "token": {
                     "type": "string"
                 }
             }

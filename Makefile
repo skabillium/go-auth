@@ -21,5 +21,8 @@ dev: swagger
 test:
 	go test ${DIR}
 
+queries:
+	sqlc generate
+
 pg:
 	docker exec -it postgres psql -U auth_user -d auth_database

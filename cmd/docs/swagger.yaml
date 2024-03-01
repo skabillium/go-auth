@@ -19,6 +19,25 @@ definitions:
       token:
         type: string
     type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
+  auth.LoginResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+      token:
+        type: string
+    type: object
 host: localhost:1323
 info:
   contact: {}
@@ -30,6 +49,23 @@ info:
   title: Auth service
   version: "1.0"
 paths:
+  /auth/login:
+    post:
+      description: Login with credentials
+      parameters:
+      - description: User credentials
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+      tags:
+      - Auth
   /auth/register:
     post:
       description: Register a new user

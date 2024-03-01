@@ -24,7 +24,7 @@ type CreateUserParams struct {
 	PasswordHash           string
 	EmailVerificationToken pgtype.Text
 	RefreshToken           pgtype.Text
-	RefreshTokenExpiresAt  interface{}
+	RefreshTokenExpiresAt  pgtype.Timestamp
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, error) {
@@ -37,6 +37,28 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		arg.RefreshToken,
 		arg.RefreshTokenExpiresAt,
 	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.ProfilePicture,
+		&i.EmailVerified,
+		&i.EmailVerificationToken,
+		&i.PasswordHash,
+		&i.RefreshToken,
+		&i.RefreshTokenExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const getUserByEmail = `-- name: GetUserByEmail :one
+SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email = $1
+`
+
+func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByEmail, email)
 	var i User
 	err := row.Scan(
 		&i.ID,

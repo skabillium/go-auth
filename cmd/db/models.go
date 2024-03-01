@@ -16,7 +16,7 @@ type User struct {
 	EmailVerificationToken pgtype.Text
 	PasswordHash           string
 	RefreshToken           pgtype.Text
-	RefreshTokenExpiresAt  interface{}
-	CreatedAt              interface{}
-	UpdatedAt              interface{}
+	RefreshTokenExpiresAt  pgtype.Timestamp
+	CreatedAt              pgtype.Timestamp
+	UpdatedAt              pgtype.Timestamp
 }

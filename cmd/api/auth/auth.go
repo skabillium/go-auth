@@ -48,6 +48,29 @@ func HashPassword(password string) (string, error) {
 	return string(bytes), err
 }
 
+func ComparePassword(password string, hash string) (bool, error) {
+	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
+	if err != nil {
+		if err == bcrypt.ErrMismatchedHashAndPassword {
+			return false, nil
+		}
+
+		return false, err
+	}
+
+	return true, nil
+}
+
+func GenerateJwt(id string, email string) (string, error) {
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
+		"id":    id,
+		"email": email,
+		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+	})
+
+	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
+}
+
 // @Tags Auth
 // @Description Register a new user
 // @Success 201 {object} CreateUserResponse
@@ -55,6 +78,12 @@ func HashPassword(password string) (string, error) {
 // @Error 400 {object} ErrorResponse
 // @Router /auth/register [POST]
 func Register(c echo.Context) error {
+	/*
+		TODO:
+		- Send verification email
+		- Handle profile picture
+	*/
+
 	// Validate request
 	createUserReq := new(CreateUserRequest)
 	if err := c.Bind(createUserReq); err != nil {
@@ -93,12 +122,62 @@ func Register(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Error while creating jwt", Error: err.Error()})
 	}
 
-	/*
-		TODO:
-		- Send verification email
-	*/
-
 	return c.JSON(http.StatusCreated, CreateUserResponse{
 		ID: UuidToString(user.ID), Email: user.Email, Token: tokenStr,
+	})
+}
+
+type LoginRequest struct {
+	Email    string `json:"email" validate:"required,email"`
+	Password string `json:"password" validate:"required"`
+}
+
+type LoginResponse struct {
+	ID    string `json:"id"`
+	Email string `json:"email"`
+	Token string `json:"token"`
+}
+
+// @Tags Auth
+// @Description Login with credentials
+// @Param data body LoginRequest true "User credentials"
+// @Success 201 {object} LoginResponse
+// @Error 400 {object} ErrorResponse
+// @Router /auth/login [POST]
+func Login(c echo.Context) error {
+	loginReq := new(LoginRequest)
+	if err := c.Bind(loginReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(loginReq); err != nil {
+		return err
+	}
+
+	user, err := queries.GetUserByEmail(ctx, loginReq.Email)
+	if err != nil {
+		return err
+	}
+
+	isCorrect, err := ComparePassword(loginReq.Password, user.PasswordHash)
+	if err != nil {
+		return err
+	}
+
+	if !isCorrect {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid credentials")
+	}
+
+	if !user.EmailVerified {
+		return echo.NewHTTPError(http.StatusUnauthorized, "User not verified")
+	}
+
+	userId := UuidToString(user.ID)
+	token, err := GenerateJwt(userId, user.Email)
+	if err != nil {
+		return err
+	}
+
+	return c.JSON(http.StatusCreated, LoginResponse{
+		ID: userId, Email: user.Email, Token: token,
 	})
 }

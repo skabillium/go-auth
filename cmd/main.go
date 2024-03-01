@@ -70,6 +70,7 @@ func main() {
 	v1.GET("/swagger*", echoSwagger.WrapHandler)
 
 	v1.POST("/auth/register", auth.Register)
+	v1.POST("/auth/login", auth.Login)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))

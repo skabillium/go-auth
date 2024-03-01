@@ -1,4 +1,12 @@
 basePath: /v1
+definitions:
+  auth.CreateUserResponse:
+    properties:
+      email:
+        type: string
+      id:
+        type: string
+    type: object
 host: localhost:1323
 info:
   contact: {}
@@ -10,6 +18,16 @@ info:
   title: Auth service
   version: "1.0"
 paths:
+  /auth/register:
+    post:
+      description: Register a new user
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.CreateUserResponse'
+      tags:
+      - Auth
   /status:
     get:
       description: Check the status of the server

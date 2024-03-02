@@ -74,3 +74,34 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	)
 	return i, err
 }
+
+const getUserByVerificationToken = `-- name: GetUserByVerificationToken :one
+SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email_verification_token = $1
+`
+
+func (q *Queries) GetUserByVerificationToken(ctx context.Context, emailVerificationToken pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByVerificationToken, emailVerificationToken)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.ProfilePicture,
+		&i.EmailVerified,
+		&i.EmailVerificationToken,
+		&i.PasswordHash,
+		&i.RefreshToken,
+		&i.RefreshTokenExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const verifyUserById = `-- name: VerifyUserById :exec
+UPDATE users SET email_verified='t' WHERE id = $1
+`
+
+func (q *Queries) VerifyUserById(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, verifyUserById, id)
+	return err
+}

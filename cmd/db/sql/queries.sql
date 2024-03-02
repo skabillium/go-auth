@@ -5,3 +5,9 @@ VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING * ;
 
 -- name: GetUserByEmail :one
 SELECT * FROM users WHERE email = $1 ;
+
+-- name: GetUserByVerificationToken :one
+SELECT * FROM users WHERE email_verification_token = $1 ;
+
+-- name: VerifyUserById :exec
+UPDATE users SET email_verified='t' WHERE id = $1 ;

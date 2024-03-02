@@ -83,6 +83,20 @@ paths:
             $ref: '#/definitions/auth.CreateUserResponse'
       tags:
       - Auth
+  /auth/verify-email/{token}:
+    get:
+      description: Verify email with token
+      parameters:
+      - description: Email verification token
+        in: path
+        name: token
+        required: true
+        type: string
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - Auth
   /status:
     get:
       description: Check the status of the server

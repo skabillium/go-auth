@@ -74,6 +74,28 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/verify-email/{token}": {
+            "get": {
+                "description": "Verify email with token",
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Email verification token",
+                        "name": "token",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/status": {
             "get": {
                 "description": "Check the status of the server",

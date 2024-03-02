@@ -59,8 +59,6 @@ func main() {
 
 	queries := db.New(conn)
 
-	auth.InitAuth(queries, ctx)
-
 	e := echo.New()
 	e.Validator = &Validator{validator: validator.New()}
 	v1 := e.Group("v1")
@@ -69,8 +67,10 @@ func main() {
 	v1.GET("/status", health.GetHealth)
 	v1.GET("/swagger*", echoSwagger.WrapHandler)
 
-	v1.POST("/auth/register", auth.Register)
-	v1.POST("/auth/login", auth.Login)
+	auth.InitAuth(v1, queries, ctx)
+
+	// v1.POST("/auth/register", auth.Register)
+	// v1.POST("/auth/login", auth.Login)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))

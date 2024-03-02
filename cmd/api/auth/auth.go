@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"net/http"
 	"os"
 	"time"
@@ -23,9 +24,14 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 }
 
-func InitAuth(q *db.Queries, contx context.Context) {
+func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 	queries = q
 	ctx = contx
+
+	// authGroup := e.Group("auth")
+	g.POST("/auth/register", Register)
+	g.POST("/auth/login", Login)
+	g.GET("/auth/verify-email/:token", VerifyEmail)
 }
 
 type CreateUserRequest struct {
@@ -37,6 +43,15 @@ type CreateUserResponse struct {
 	ID    string `json:"id"`
 	Email string `json:"email"`
 	Token string `json:"token"`
+}
+
+func GenerateRandomString(length int) string {
+	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, length)
+	for i := range b {
+		b[i] = letterBytes[rand.Intn(len(letterBytes))]
+	}
+	return string(b)
 }
 
 func UuidToString(uid pgtype.UUID) string {
@@ -95,7 +110,7 @@ func Register(c echo.Context) error {
 
 	passwordHash, err := HashPassword(createUserReq.Password)
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Error while creating user"})
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating user")
 	}
 
 	user, err := queries.CreateUser(ctx, db.CreateUserParams{
@@ -103,12 +118,12 @@ func Register(c echo.Context) error {
 			Bytes: uuid.New(),
 			Valid: true,
 		},
-		Email:        createUserReq.Email,
-		PasswordHash: passwordHash,
+		Email:                  createUserReq.Email,
+		PasswordHash:           passwordHash,
+		EmailVerificationToken: pgtype.Text{String: GenerateRandomString(12), Valid: true},
 	})
 	if err != nil {
-		fmt.Println(err)
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Error while creating user", Error: err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating user")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
@@ -119,7 +134,7 @@ func Register(c echo.Context) error {
 
 	tokenStr, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, ErrorResponse{Message: "Error while creating jwt", Error: err.Error()})
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating jwt")
 	}
 
 	return c.JSON(http.StatusCreated, CreateUserResponse{
@@ -180,4 +195,30 @@ func Login(c echo.Context) error {
 	return c.JSON(http.StatusCreated, LoginResponse{
 		ID: userId, Email: user.Email, Token: token,
 	})
+}
+
+// @Tags Auth
+// @Description Verify email with token
+// @Success 204
+// @Param token path string true "Email verification token"
+// @Router /auth/verify-email/{token} [GET]
+func VerifyEmail(c echo.Context) error {
+	verificationToken := c.Param("token")
+
+	user, err := queries.GetUserByVerificationToken(ctx, pgtype.Text{String: verificationToken, Valid: true})
+	if err != nil {
+		// TODO: Handle no rows returned
+		return echo.NewHTTPError(http.StatusNotFound, "User not found")
+	}
+
+	if user.EmailVerified {
+		return echo.NewHTTPError(http.StatusBadRequest, "User already verified")
+	}
+
+	err = queries.VerifyUserById(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }

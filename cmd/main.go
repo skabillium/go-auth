@@ -49,7 +49,6 @@ func (v *Validator) Validate(i interface{}) error {
 // @in header
 // @name Authorization
 func main() {
-
 	// Connect to database
 	ctx := context.Background()
 
@@ -64,6 +63,7 @@ func main() {
 
 	e := echo.New()
 	e.Validator = &Validator{validator: validator.New()}
+
 	v1 := e.Group("v1")
 
 	// Map handlers to routes
@@ -71,9 +71,6 @@ func main() {
 	v1.GET("/swagger*", echoSwagger.WrapHandler)
 
 	auth.InitAuth(v1, queries, ctx)
-
-	// v1.POST("/auth/register", auth.Register)
-	// v1.POST("/auth/login", auth.Login)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))

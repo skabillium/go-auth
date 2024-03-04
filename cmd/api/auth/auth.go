@@ -6,12 +6,12 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
+	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"golang.org/x/crypto/bcrypt"
 	"skabillium.io/auth-service/cmd/db"
@@ -29,10 +29,12 @@ func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 	queries = q
 	ctx = contx
 
+	IsLoggedIn := echojwt.JWT([]byte(os.Getenv("JWT_SECRET")))
+
 	g.POST("/auth/register", Register)
 	g.POST("/auth/login", Login)
 	g.GET("/auth/verify-email/:token", VerifyEmail)
-	g.PATCH("/auth/password", UpdatePassword)
+	g.PATCH("/auth/password", UpdatePassword, IsLoggedIn)
 }
 
 type CreateUserRequest struct {
@@ -57,11 +59,6 @@ func GenerateRandomString(length int) string {
 
 func UuidToString(uid pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uid.Bytes[0:4], uid.Bytes[4:6], uid.Bytes[6:8], uid.Bytes[8:10], uid.Bytes[10:16])
-}
-
-func StringUuidToBytes(uid string) [16]byte {
-	id := []byte(strings.ReplaceAll(uid, "-", ""))
-	return [16]byte(id[:16])
 }
 
 func HashPassword(password string) (string, error) {
@@ -241,12 +238,6 @@ type UpdatePasswordRequest struct {
 	Password string `json:"password" validate:"required"`
 }
 
-type Claims struct {
-	Id    string
-	Email string
-	jwt.Claims
-}
-
 // @Tags Auth
 // @Description Update password
 // @Security BearerAuth
@@ -267,29 +258,19 @@ func UpdatePassword(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
 	}
 
-	tokenStr := strings.Split(c.Request().Header["Authorization"][0], " ")[1]
-	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
-		return []byte(os.Getenv("JWT_SECRET")), nil
-	})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
-	}
-
-	if !token.Valid {
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching token")
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		// TODO: Handle all error cases
-		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
 	}
 
 	var userIdStr string
 	if userIdStr, ok = claims["id"].(string); !ok {
-		// The type assertion succeeded, and str now holds the string value
-		// TODO: Handle error
-		fmt.Println("Not ok")
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
 	}
 
 	userUuid, err := uuid.Parse(userIdStr)

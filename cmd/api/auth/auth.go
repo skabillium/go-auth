@@ -89,14 +89,6 @@ func GenerateJwt(id string, email string) (string, error) {
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 }
 
-// type JwtInfo struct {
-// 	id    string
-// 	email string
-// 	exp   int
-// }
-
-// func DecodeJwt(jwt string) {}
-
 // @Tags Auth
 // @Description Register a new user
 // @Success 201 {object} CreateUserResponse

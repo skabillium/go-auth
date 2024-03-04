@@ -33,6 +33,7 @@ func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 
 	g.POST("/auth/register", Register)
 	g.POST("/auth/login", Login)
+	g.POST("/auth/forgot-password", ForgotPassword)
 	g.GET("/auth/verify-email/:token", VerifyEmail)
 	g.PATCH("/auth/password", UpdatePassword, IsLoggedIn)
 }
@@ -100,6 +101,7 @@ func Register(c echo.Context) error {
 		TODO:
 		- Send verification email
 		- Handle profile picture
+		- Refresh token
 	*/
 
 	// Validate request
@@ -195,6 +197,8 @@ func Login(c echo.Context) error {
 		return err
 	}
 
+	// TODO: Refresh token
+
 	return c.JSON(http.StatusCreated, LoginResponse{
 		ID: userId, Email: user.Email, Token: token,
 	})
@@ -281,7 +285,45 @@ func UpdatePassword(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email"`
+}
+
+// @Tags Auth
+// @Description Trigger a "forgot password email"
+// @Success 204
+// @Param data body ForgotPasswordRequest true "User email"
+// @Error 400 {object} ErrorResponse
+// @Router /auth/forgot-password [POST]
 func ForgotPassword(c echo.Context) error {
+	forgotPasswordReq := new(ForgotPasswordRequest)
+	if err := c.Bind(forgotPasswordReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(forgotPasswordReq); err != nil {
+		return err
+	}
+
+	resetPasswordToken := GenerateRandomString(12)
+	user, err := queries.GetUserByEmail(ctx, forgotPasswordReq.Email)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	err = queries.UpdateUserPasswordResetInfoById(ctx, db.UpdateUserPasswordResetInfoByIdParams{
+		ID:                 user.ID,
+		ResetPasswordToken: pgtype.Text{String: resetPasswordToken, Valid: true},
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, err.Error())
+	}
+
+	// TODO: Send email
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func ResetPassword(c echo.Context) error {
 	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
 }
 

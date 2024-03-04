@@ -14,7 +14,7 @@ import (
 const createUser = `-- name: CreateUser :one
 INSERT INTO users (id, email, profile_picture, password_hash, email_verification_token,
 refresh_token, refresh_token_expires_at)
-VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at
+VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at
 `
 
 type CreateUserParams struct {
@@ -44,6 +44,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 		&i.ProfilePicture,
 		&i.EmailVerified,
 		&i.EmailVerificationToken,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordExpiresAt,
 		&i.PasswordHash,
 		&i.RefreshToken,
 		&i.RefreshTokenExpiresAt,
@@ -54,7 +56,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (User, e
 }
 
 const getUserByEmail = `-- name: GetUserByEmail :one
-SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email = $1
+SELECT id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email = $1
 `
 
 func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error) {
@@ -66,6 +68,8 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 		&i.ProfilePicture,
 		&i.EmailVerified,
 		&i.EmailVerificationToken,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordExpiresAt,
 		&i.PasswordHash,
 		&i.RefreshToken,
 		&i.RefreshTokenExpiresAt,
@@ -76,7 +80,7 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 }
 
 const getUserById = `-- name: GetUserById :one
-SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE id = $1
+SELECT id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE id = $1
 `
 
 func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error) {
@@ -88,6 +92,8 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 		&i.ProfilePicture,
 		&i.EmailVerified,
 		&i.EmailVerificationToken,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordExpiresAt,
 		&i.PasswordHash,
 		&i.RefreshToken,
 		&i.RefreshTokenExpiresAt,
@@ -98,7 +104,7 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 }
 
 const getUserByVerificationToken = `-- name: GetUserByVerificationToken :one
-SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email_verification_token = $1
+SELECT id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email_verification_token = $1
 `
 
 func (q *Queries) GetUserByVerificationToken(ctx context.Context, emailVerificationToken pgtype.Text) (User, error) {
@@ -110,6 +116,8 @@ func (q *Queries) GetUserByVerificationToken(ctx context.Context, emailVerificat
 		&i.ProfilePicture,
 		&i.EmailVerified,
 		&i.EmailVerificationToken,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordExpiresAt,
 		&i.PasswordHash,
 		&i.RefreshToken,
 		&i.RefreshTokenExpiresAt,
@@ -130,6 +138,21 @@ type UpdateUserPasswordByIdParams struct {
 
 func (q *Queries) UpdateUserPasswordById(ctx context.Context, arg UpdateUserPasswordByIdParams) error {
 	_, err := q.db.Exec(ctx, updateUserPasswordById, arg.ID, arg.PasswordHash)
+	return err
+}
+
+const updateUserPasswordResetInfoById = `-- name: UpdateUserPasswordResetInfoById :exec
+UPDATE users SET reset_password_token = $2, refresh_token_expires_at = refresh_token_expires_at +
+INTERVAL '15 minutes' WHERE id = $1
+`
+
+type UpdateUserPasswordResetInfoByIdParams struct {
+	ID                 pgtype.UUID
+	ResetPasswordToken pgtype.Text
+}
+
+func (q *Queries) UpdateUserPasswordResetInfoById(ctx context.Context, arg UpdateUserPasswordResetInfoByIdParams) error {
+	_, err := q.db.Exec(ctx, updateUserPasswordResetInfoById, arg.ID, arg.ResetPasswordToken)
 	return err
 }
 

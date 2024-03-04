@@ -14,6 +14,8 @@ type User struct {
 	ProfilePicture         pgtype.Text
 	EmailVerified          bool
 	EmailVerificationToken pgtype.Text
+	ResetPasswordToken     pgtype.Text
+	ResetPasswordExpiresAt pgtype.Text
 	PasswordHash           string
 	RefreshToken           pgtype.Text
 	RefreshTokenExpiresAt  pgtype.Timestamp

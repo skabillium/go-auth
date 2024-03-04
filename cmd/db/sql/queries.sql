@@ -17,3 +17,7 @@ UPDATE users SET email_verified='t' WHERE id = $1 ;
 
 -- name: UpdateUserPasswordById :exec
 UPDATE users SET password_hash = $2 WHERE id = $1 ;
+
+-- name: UpdateUserPasswordResetInfoById :exec
+UPDATE users SET reset_password_token = $2, refresh_token_expires_at = refresh_token_expires_at +
+INTERVAL '15 minutes' WHERE id = $1 ;

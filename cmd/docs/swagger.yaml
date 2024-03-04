@@ -19,6 +19,13 @@ definitions:
       token:
         type: string
     type: object
+  auth.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   auth.LoginRequest:
     properties:
       email:
@@ -56,6 +63,21 @@ info:
   title: Auth service
   version: "1.0"
 paths:
+  /auth/forgot-password:
+    post:
+      description: Trigger a "forgot password email"
+      parameters:
+      - description: User email
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
+      responses:
+        "204":
+          description: No Content
+      tags:
+      - Auth
   /auth/login:
     post:
       description: Login with credentials

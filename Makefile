@@ -5,17 +5,17 @@ DOCS_DIR = ${DIR}/docs
 clean:
 	rm -rf ${DOCS_DIR}
 
-swagger:
+docs:
 	swag init --dir ${DIR} --output ${DOCS_DIR}
 
 install:
 	go install
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest 
 
-build: clean swagger
+build: clean docs
 	go build -o ${BIN} ${DIR}
 
-dev: swagger
+dev: docs
 	go run ${DIR}
 
 test:

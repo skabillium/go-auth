@@ -38,6 +38,13 @@ definitions:
       token:
         type: string
     type: object
+  auth.UpdatePasswordRequest:
+    properties:
+      password:
+        type: string
+    required:
+    - password
+    type: object
 host: localhost:1323
 info:
   contact: {}
@@ -64,6 +71,23 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/auth.LoginResponse'
+      tags:
+      - Auth
+  /auth/password:
+    patch:
+      description: Update password
+      parameters:
+      - description: Password to set
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.UpdatePasswordRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
       tags:
       - Auth
   /auth/register:
@@ -105,4 +129,9 @@ paths:
           description: OK
       tags:
       - Health
+securityDefinitions:
+  BearerAuth:
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

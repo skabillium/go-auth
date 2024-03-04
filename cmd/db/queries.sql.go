@@ -75,6 +75,28 @@ func (q *Queries) GetUserByEmail(ctx context.Context, email string) (User, error
 	return i, err
 }
 
+const getUserById = `-- name: GetUserById :one
+SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE id = $1
+`
+
+func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error) {
+	row := q.db.QueryRow(ctx, getUserById, id)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.ProfilePicture,
+		&i.EmailVerified,
+		&i.EmailVerificationToken,
+		&i.PasswordHash,
+		&i.RefreshToken,
+		&i.RefreshTokenExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByVerificationToken = `-- name: GetUserByVerificationToken :one
 SELECT id, email, profile_picture, email_verified, email_verification_token, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email_verification_token = $1
 `
@@ -95,6 +117,20 @@ func (q *Queries) GetUserByVerificationToken(ctx context.Context, emailVerificat
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const updateUserPasswordById = `-- name: UpdateUserPasswordById :exec
+UPDATE users SET password_hash = $2 WHERE id = $1
+`
+
+type UpdateUserPasswordByIdParams struct {
+	ID           pgtype.UUID
+	PasswordHash string
+}
+
+func (q *Queries) UpdateUserPasswordById(ctx context.Context, arg UpdateUserPasswordByIdParams) error {
+	_, err := q.db.Exec(ctx, updateUserPasswordById, arg.ID, arg.PasswordHash)
+	return err
 }
 
 const verifyUserById = `-- name: VerifyUserById :exec

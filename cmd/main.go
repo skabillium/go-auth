@@ -45,6 +45,9 @@ func (v *Validator) Validate(i interface{}) error {
 // @license.url https://opensource.org/license/mit
 // @host localhost:1323
 // @BasePath /v1
+// @securityDefinitions.apiKey BearerAuth
+// @in header
+// @name Authorization
 func main() {
 
 	// Connect to database

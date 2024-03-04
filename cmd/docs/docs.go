@@ -47,6 +47,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/password": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Update password",
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "description": "Password to set",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.UpdatePasswordRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "description": "Register a new user",
@@ -168,6 +197,24 @@ const docTemplate = `{
                     "type": "string"
                 }
             }
+        },
+        "auth.UpdatePasswordRequest": {
+            "type": "object",
+            "required": [
+                "password"
+            ],
+            "properties": {
+                "password": {
+                    "type": "string"
+                }
+            }
+        }
+    },
+    "securityDefinitions": {
+        "BearerAuth": {
+            "type": "apiKey",
+            "name": "Authorization",
+            "in": "header"
         }
     }
 }`

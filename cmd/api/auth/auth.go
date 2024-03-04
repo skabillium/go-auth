@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -28,10 +29,10 @@ func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 	queries = q
 	ctx = contx
 
-	// authGroup := e.Group("auth")
 	g.POST("/auth/register", Register)
 	g.POST("/auth/login", Login)
 	g.GET("/auth/verify-email/:token", VerifyEmail)
+	g.PATCH("/auth/password", UpdatePassword)
 }
 
 type CreateUserRequest struct {
@@ -56,6 +57,11 @@ func GenerateRandomString(length int) string {
 
 func UuidToString(uid pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uid.Bytes[0:4], uid.Bytes[4:6], uid.Bytes[6:8], uid.Bytes[8:10], uid.Bytes[10:16])
+}
+
+func StringUuidToBytes(uid string) [16]byte {
+	id := []byte(strings.ReplaceAll(uid, "-", ""))
+	return [16]byte(id[:16])
 }
 
 func HashPassword(password string) (string, error) {
@@ -85,6 +91,14 @@ func GenerateJwt(id string, email string) (string, error) {
 
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 }
+
+// type JwtInfo struct {
+// 	id    string
+// 	email string
+// 	exp   int
+// }
+
+// func DecodeJwt(jwt string) {}
 
 // @Tags Auth
 // @Description Register a new user
@@ -221,4 +235,91 @@ func VerifyEmail(c echo.Context) error {
 	}
 
 	return c.NoContent(http.StatusNoContent)
+}
+
+type UpdatePasswordRequest struct {
+	Password string `json:"password" validate:"required"`
+}
+
+type Claims struct {
+	Id    string
+	Email string
+	jwt.Claims
+}
+
+// @Tags Auth
+// @Description Update password
+// @Security BearerAuth
+// @Param data body UpdatePasswordRequest true "Password to set"
+// @Success 204
+// @Router /auth/password [PATCH]
+func UpdatePassword(c echo.Context) error {
+	updatePasswordReq := new(UpdatePasswordRequest)
+	if err := c.Bind(updatePasswordReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(updatePasswordReq); err != nil {
+		return err
+	}
+
+	passwordHash, err := HashPassword(updatePasswordReq.Password)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
+	}
+
+	tokenStr := strings.Split(c.Request().Header["Authorization"][0], " ")[1]
+	token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
+		return []byte(os.Getenv("JWT_SECRET")), nil
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+	}
+
+	if !token.Valid {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		// TODO: Handle all error cases
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+	}
+
+	var userIdStr string
+	if userIdStr, ok = claims["id"].(string); !ok {
+		// The type assertion succeeded, and str now holds the string value
+		// TODO: Handle error
+		fmt.Println("Not ok")
+	}
+
+	userUuid, err := uuid.Parse(userIdStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching user")
+	}
+
+	err = queries.UpdateUserPasswordById(ctx, db.UpdateUserPasswordByIdParams{
+		ID:           pgtype.UUID{Bytes: userUuid, Valid: true},
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while updating password")
+	}
+
+	return c.NoContent(http.StatusNoContent)
+}
+
+func ForgotPassword(c echo.Context) error {
+	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+}
+
+func Refresh(c echo.Context) error {
+	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+}
+
+func ResendVerificationEmail(c echo.Context) error {
+	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+}
+
+func Logout(c echo.Context) error {
+	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
 }

@@ -17,6 +17,7 @@ import (
 	"skabillium.io/auth-service/cmd/api/health"
 	"skabillium.io/auth-service/cmd/db"
 	_ "skabillium.io/auth-service/cmd/docs"
+	"skabillium.io/auth-service/cmd/middleware"
 )
 
 var defaultCtx = context.Background()
@@ -76,6 +77,10 @@ func main() {
 
 	e := echo.New()
 	e.Validator = &Validator{validator: validator.New()}
+
+	middleware.InitMiddleware(defaultCtx, redisClient)
+
+	e.Use(middleware.IsBlacklisted)
 
 	v1 := e.Group("v1")
 

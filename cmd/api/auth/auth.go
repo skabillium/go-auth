@@ -488,13 +488,6 @@ func ResendVerificationEmail(c echo.Context) error {
 // @Success 204
 // @Router /auth/logout [POST]
 func Logout(c echo.Context) error {
-
-	/*
-		TODO:
-		- Delete refresh token
-		- Add jwt to blacklist
-	*/
-
 	// TODO: Find a better way to decode tokens
 	token, ok := c.Get("user").(*jwt.Token)
 	if !ok {

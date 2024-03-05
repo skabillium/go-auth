@@ -52,6 +52,13 @@ definitions:
       jwt:
         type: string
     type: object
+  auth.ResendVerificationEmailRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   auth.ResetPasswordRequest:
     properties:
       password:
@@ -185,6 +192,23 @@ paths:
       responses:
         "204":
           description: No Content
+      tags:
+      - Auth
+  /auth/verify-email/resend:
+    post:
+      description: Refresh JWT
+      parameters:
+      - description: email address
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResendVerificationEmailRequest'
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
       tags:
       - Auth
   /status:

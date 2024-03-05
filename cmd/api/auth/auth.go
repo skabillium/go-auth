@@ -118,7 +118,6 @@ func Register(c echo.Context) error {
 		TODO:
 		- Send verification email
 		- Handle profile picture
-		- Refresh token
 	*/
 
 	// Validate request
@@ -439,8 +438,37 @@ func Refresh(c echo.Context) error {
 	return c.JSON(http.StatusCreated, RefreshJwtResponse{Jwt: newToken})
 }
 
+type ResendVerificationEmailRequest struct {
+	Email string `json:"email" validate:"email,required"`
+}
+
+// @Tags Auth
+// @Description Refresh JWT
+// @Security BearerAuth
+// @Param data body ResendVerificationEmailRequest true "email address"
+// @Success 204
+// @Router /auth/verify-email/resend [POST]
 func ResendVerificationEmail(c echo.Context) error {
-	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+	resendVerificationEmailReq := new(ResendVerificationEmailRequest)
+	if err := c.Bind(resendVerificationEmailReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(resendVerificationEmailReq); err != nil {
+		return err
+	}
+
+	user, err := queries.GetUserByEmail(ctx, resendVerificationEmailReq.Email)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "User not found")
+	}
+
+	if user.EmailVerified {
+		return echo.NewHTTPError(http.StatusBadRequest, "User already verified")
+	}
+
+	// TODO: Resend email
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func Logout(c echo.Context) error {

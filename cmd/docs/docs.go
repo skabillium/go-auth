@@ -172,6 +172,35 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/verify-email/resend": {
+            "post": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Refresh JWT",
+                "tags": [
+                    "Auth"
+                ],
+                "parameters": [
+                    {
+                        "description": "email address",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.ResendVerificationEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/auth/verify-email/{token}": {
             "get": {
                 "description": "Verify email with token",
@@ -285,6 +314,17 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "jwt": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.ResendVerificationEmailRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
                     "type": "string"
                 }
             }

@@ -7,7 +7,7 @@ CREATE TABLE users (
     email_verified BOOLEAN NOT NULL DEFAULT false,
     email_verification_token VARCHAR,
     reset_password_token VARCHAR,
-    reset_password_expires_at VARCHAR,
+    reset_password_expires_at TIMESTAMP,
     password_hash VARCHAR NOT NULL,
     refresh_token VARCHAR,
     refresh_token_expires_at TIMESTAMP,

@@ -127,6 +127,22 @@ func (q *Queries) GetUserByVerificationToken(ctx context.Context, emailVerificat
 	return i, err
 }
 
+const getUserPasswordResetInfo = `-- name: GetUserPasswordResetInfo :one
+SELECT id, reset_password_expires_at FROM users WHERE reset_password_token = $1
+`
+
+type GetUserPasswordResetInfoRow struct {
+	ID                     pgtype.UUID
+	ResetPasswordExpiresAt pgtype.Timestamp
+}
+
+func (q *Queries) GetUserPasswordResetInfo(ctx context.Context, resetPasswordToken pgtype.Text) (GetUserPasswordResetInfoRow, error) {
+	row := q.db.QueryRow(ctx, getUserPasswordResetInfo, resetPasswordToken)
+	var i GetUserPasswordResetInfoRow
+	err := row.Scan(&i.ID, &i.ResetPasswordExpiresAt)
+	return i, err
+}
+
 const updateUserPasswordById = `-- name: UpdateUserPasswordById :exec
 UPDATE users SET password_hash = $2 WHERE id = $1
 `
@@ -142,8 +158,9 @@ func (q *Queries) UpdateUserPasswordById(ctx context.Context, arg UpdateUserPass
 }
 
 const updateUserPasswordResetInfoById = `-- name: UpdateUserPasswordResetInfoById :exec
-UPDATE users SET reset_password_token = $2, refresh_token_expires_at = refresh_token_expires_at +
-INTERVAL '15 minutes' WHERE id = $1
+UPDATE users SET reset_password_token = $2, reset_password_expires_at = 
+COALESCE(reset_password_expires_at, CURRENT_TIMESTAMP) + INTERVAL '15 minutes' WHERE
+id = $1
 `
 
 type UpdateUserPasswordResetInfoByIdParams struct {

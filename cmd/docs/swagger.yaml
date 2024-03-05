@@ -45,6 +45,16 @@ definitions:
       token:
         type: string
     type: object
+  auth.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
+    type: object
   auth.UpdatePasswordRequest:
     properties:
       password:
@@ -127,6 +137,21 @@ paths:
           description: Created
           schema:
             $ref: '#/definitions/auth.CreateUserResponse'
+      tags:
+      - Auth
+  /auth/reset-password:
+    post:
+      description: Reset password from token
+      parameters:
+      - description: Token and new password
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResetPasswordRequest'
+      responses:
+        "204":
+          description: No Content
       tags:
       - Auth
   /auth/verify-email/{token}:

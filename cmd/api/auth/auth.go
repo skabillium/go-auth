@@ -34,6 +34,7 @@ func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 	g.POST("/auth/register", Register)
 	g.POST("/auth/login", Login)
 	g.POST("/auth/forgot-password", ForgotPassword)
+	g.POST("/auth/reset-password", ResetPassword)
 	g.GET("/auth/verify-email/:token", VerifyEmail)
 	g.PATCH("/auth/password", UpdatePassword, IsLoggedIn)
 }
@@ -323,8 +324,49 @@ func ForgotPassword(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type ResetPasswordRequest struct {
+	Token    string `json:"token" validate:"required"`
+	Password string `json:"password" validate:"required"`
+}
+
+// @Tags Auth
+// @Description Reset password from token
+// @Success 204
+// @Param data body ResetPasswordRequest true "Token and new password"
+// @Error 400 {object} ErrorResponse
+// @Router /auth/reset-password [POST]
 func ResetPassword(c echo.Context) error {
-	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+	resetPasswordReq := new(ResetPasswordRequest)
+	if err := c.Bind(resetPasswordReq); err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+	if err := c.Validate(resetPasswordReq); err != nil {
+		return err
+	}
+
+	user, err := queries.GetUserPasswordResetInfo(ctx, pgtype.Text{String: resetPasswordReq.Token, Valid: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusNotFound, "User not found")
+	}
+
+	if user.ResetPasswordExpiresAt.Time.Before(time.Now()) {
+		return echo.NewHTTPError(http.StatusBadRequest, "Password reset has expired")
+	}
+
+	passwordHash, err := HashPassword(resetPasswordReq.Password)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
+	}
+
+	err = queries.UpdateUserPasswordById(ctx, db.UpdateUserPasswordByIdParams{
+		ID:           user.ID,
+		PasswordHash: passwordHash,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }
 
 func Refresh(c echo.Context) error {

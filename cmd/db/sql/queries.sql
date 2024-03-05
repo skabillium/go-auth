@@ -12,6 +12,9 @@ SELECT * FROM users WHERE email = $1 ;
 -- name: GetUserByVerificationToken :one
 SELECT * FROM users WHERE email_verification_token = $1 ;
 
+-- name: GetUserPasswordResetInfo :one
+SELECT id, reset_password_expires_at FROM users WHERE reset_password_token = $1 ;
+
 -- name: VerifyUserById :exec
 UPDATE users SET email_verified='t' WHERE id = $1 ;
 
@@ -19,5 +22,6 @@ UPDATE users SET email_verified='t' WHERE id = $1 ;
 UPDATE users SET password_hash = $2 WHERE id = $1 ;
 
 -- name: UpdateUserPasswordResetInfoById :exec
-UPDATE users SET reset_password_token = $2, refresh_token_expires_at = refresh_token_expires_at +
-INTERVAL '15 minutes' WHERE id = $1 ;
+UPDATE users SET reset_password_token = $2, reset_password_expires_at = 
+COALESCE(reset_password_expires_at, CURRENT_TIMESTAMP) + INTERVAL '15 minutes' WHERE
+id = $1 ;

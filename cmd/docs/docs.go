@@ -100,6 +100,27 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/refresh": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Refresh JWT",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshJwtResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "description": "Register a new user",
@@ -212,6 +233,9 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
+                "refreshToken": {
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
@@ -253,6 +277,14 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.RefreshJwtResponse": {
+            "type": "object",
+            "properties": {
+                "jwt": {
                     "type": "string"
                 }
             }

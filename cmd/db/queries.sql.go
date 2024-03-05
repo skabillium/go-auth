@@ -103,6 +103,30 @@ func (q *Queries) GetUserById(ctx context.Context, id pgtype.UUID) (User, error)
 	return i, err
 }
 
+const getUserByRefreshToken = `-- name: GetUserByRefreshToken :one
+SELECT id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE refresh_token = $1
+`
+
+func (q *Queries) GetUserByRefreshToken(ctx context.Context, refreshToken pgtype.Text) (User, error) {
+	row := q.db.QueryRow(ctx, getUserByRefreshToken, refreshToken)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.ProfilePicture,
+		&i.EmailVerified,
+		&i.EmailVerificationToken,
+		&i.ResetPasswordToken,
+		&i.ResetPasswordExpiresAt,
+		&i.PasswordHash,
+		&i.RefreshToken,
+		&i.RefreshTokenExpiresAt,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
 const getUserByVerificationToken = `-- name: GetUserByVerificationToken :one
 SELECT id, email, profile_picture, email_verified, email_verification_token, reset_password_token, reset_password_expires_at, password_hash, refresh_token, refresh_token_expires_at, created_at, updated_at FROM users WHERE email_verification_token = $1
 `

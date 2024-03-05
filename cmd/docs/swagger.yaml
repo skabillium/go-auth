@@ -16,6 +16,8 @@ definitions:
         type: string
       id:
         type: string
+      refreshToken:
+        type: string
       token:
         type: string
     type: object
@@ -43,6 +45,11 @@ definitions:
       id:
         type: string
       token:
+        type: string
+    type: object
+  auth.RefreshJwtResponse:
+    properties:
+      jwt:
         type: string
     type: object
   auth.ResetPasswordRequest:
@@ -118,6 +125,18 @@ paths:
       responses:
         "204":
           description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - Auth
+  /auth/refresh:
+    get:
+      description: Refresh JWT
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.RefreshJwtResponse'
       security:
       - BearerAuth: []
       tags:

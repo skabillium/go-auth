@@ -35,7 +35,10 @@ func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
 	g.POST("/auth/login", Login)
 	g.POST("/auth/forgot-password", ForgotPassword)
 	g.POST("/auth/reset-password", ResetPassword)
+
 	g.GET("/auth/verify-email/:token", VerifyEmail)
+	g.GET("/auth/refresh", Refresh, IsLoggedIn)
+
 	g.PATCH("/auth/password", UpdatePassword, IsLoggedIn)
 }
 
@@ -45,9 +48,10 @@ type CreateUserRequest struct {
 }
 
 type CreateUserResponse struct {
-	ID    string `json:"id"`
-	Email string `json:"email"`
-	Token string `json:"token"`
+	ID           string `json:"id"`
+	Email        string `json:"email"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refreshToken"`
 }
 
 func GenerateRandomString(length int) string {
@@ -81,11 +85,23 @@ func ComparePassword(password string, hash string) (bool, error) {
 	return true, nil
 }
 
-func GenerateJwt(id string, email string) (string, error) {
+func GenerateRefreshToken() string {
+	return GenerateRandomString(100)
+}
+
+type GenerateJwtOptions struct {
+	ID           string
+	Email        string
+	RefreshToken string
+}
+
+func GenerateJwt(options GenerateJwtOptions) (string, error) {
+	// TODO: Add refresh token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":    id,
-		"email": email,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+		"id":           options.ID,
+		"email":        options.Email,
+		"refreshToken": options.RefreshToken,
+		"exp":          time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -119,6 +135,7 @@ func Register(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating user")
 	}
 
+	refreshToken := GenerateRefreshToken()
 	user, err := queries.CreateUser(ctx, db.CreateUserParams{
 		ID: pgtype.UUID{
 			Bytes: uuid.New(),
@@ -127,15 +144,18 @@ func Register(c echo.Context) error {
 		Email:                  createUserReq.Email,
 		PasswordHash:           passwordHash,
 		EmailVerificationToken: pgtype.Text{String: GenerateRandomString(12), Valid: true},
+		RefreshToken:           pgtype.Text{String: refreshToken, Valid: true},
+		RefreshTokenExpiresAt:  pgtype.Timestamp{Time: time.Now().AddDate(0, 1, 0), Valid: true},
 	})
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating user")
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":    UuidToString(user.ID),
-		"email": user.Email,
-		"exp":   time.Now().Add(time.Hour * 24).Unix(),
+		"id":           UuidToString(user.ID),
+		"email":        user.Email,
+		"refreshToken": refreshToken,
+		"exp":          time.Now().Add(time.Hour * 24).Unix(),
 	})
 
 	tokenStr, err := token.SignedString([]byte(os.Getenv("JWT_SECRET")))
@@ -145,6 +165,7 @@ func Register(c echo.Context) error {
 
 	return c.JSON(http.StatusCreated, CreateUserResponse{
 		ID: UuidToString(user.ID), Email: user.Email, Token: tokenStr,
+		RefreshToken: refreshToken,
 	})
 }
 
@@ -193,12 +214,15 @@ func Login(c echo.Context) error {
 	}
 
 	userId := UuidToString(user.ID)
-	token, err := GenerateJwt(userId, user.Email)
+	refreshToken := GenerateRefreshToken() // TODO: Save token to db
+	token, err := GenerateJwt(GenerateJwtOptions{
+		ID:           userId,
+		Email:        user.Email,
+		RefreshToken: refreshToken,
+	})
 	if err != nil {
 		return err
 	}
-
-	// TODO: Refresh token
 
 	return c.JSON(http.StatusCreated, LoginResponse{
 		ID: userId, Email: user.Email, Token: token,
@@ -369,8 +393,50 @@ func ResetPassword(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+type RefreshJwtResponse struct {
+	Jwt string `json:"jwt"`
+}
+
+// @Tags Auth
+// @Description Refresh JWT
+// @Security BearerAuth
+// @Success 201 {object} RefreshJwtResponse
+// @Router /auth/refresh [GET]
 func Refresh(c echo.Context) error {
-	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
+	}
+
+	refreshToken, ok := claims["refreshToken"].(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
+	}
+
+	user, err := queries.GetUserByRefreshToken(ctx, pgtype.Text{String: refreshToken, Valid: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while refreshing token")
+	}
+
+	if user.RefreshTokenExpiresAt.Time.Before(time.Now()) {
+		return echo.NewHTTPError(http.StatusBadRequest, "Refresh token has expired")
+	}
+
+	newToken, err := GenerateJwt(GenerateJwtOptions{
+		ID:           UuidToString(user.ID),
+		Email:        user.Email,
+		RefreshToken: refreshToken,
+	})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating token")
+	}
+
+	return c.JSON(http.StatusCreated, RefreshJwtResponse{Jwt: newToken})
 }
 
 func ResendVerificationEmail(c echo.Context) error {

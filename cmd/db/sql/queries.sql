@@ -12,6 +12,9 @@ SELECT * FROM users WHERE email = $1 ;
 -- name: GetUserByVerificationToken :one
 SELECT * FROM users WHERE email_verification_token = $1 ;
 
+-- name: GetUserByRefreshToken :one
+SELECT * FROM users WHERE refresh_token = $1 ;
+
 -- name: GetUserPasswordResetInfo :one
 SELECT id, reset_password_expires_at FROM users WHERE reset_password_token = $1 ;
 

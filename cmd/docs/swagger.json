@@ -94,6 +94,27 @@
                 }
             }
         },
+        "/auth/refresh": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Refresh JWT",
+                "tags": [
+                    "Auth"
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth.RefreshJwtResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/register": {
             "post": {
                 "description": "Register a new user",
@@ -206,6 +227,9 @@
                 "id": {
                     "type": "string"
                 },
+                "refreshToken": {
+                    "type": "string"
+                },
                 "token": {
                     "type": "string"
                 }
@@ -247,6 +271,14 @@
                     "type": "string"
                 },
                 "token": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.RefreshJwtResponse": {
+            "type": "object",
+            "properties": {
+                "jwt": {
                     "type": "string"
                 }
             }

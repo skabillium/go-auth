@@ -119,6 +119,16 @@ paths:
             $ref: '#/definitions/auth.LoginResponse'
       tags:
       - Auth
+  /auth/logout:
+    post:
+      description: Logout
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - Auth
   /auth/password:
     patch:
       description: Update password

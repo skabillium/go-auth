@@ -167,6 +167,16 @@ func (q *Queries) GetUserPasswordResetInfo(ctx context.Context, resetPasswordTok
 	return i, err
 }
 
+const removeUserRefreshTokenById = `-- name: RemoveUserRefreshTokenById :exec
+UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL WHERE 
+id = $1
+`
+
+func (q *Queries) RemoveUserRefreshTokenById(ctx context.Context, id pgtype.UUID) error {
+	_, err := q.db.Exec(ctx, removeUserRefreshTokenById, id)
+	return err
+}
+
 const updateUserPasswordById = `-- name: UpdateUserPasswordById :exec
 UPDATE users SET password_hash = $2 WHERE id = $1
 `

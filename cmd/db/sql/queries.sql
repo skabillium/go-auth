@@ -28,3 +28,7 @@ UPDATE users SET password_hash = $2 WHERE id = $1 ;
 UPDATE users SET reset_password_token = $2, reset_password_expires_at = 
 COALESCE(reset_password_expires_at, CURRENT_TIMESTAMP) + INTERVAL '15 minutes' WHERE
 id = $1 ;
+
+-- name: RemoveUserRefreshTokenById :exec
+UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL WHERE 
+id = $1 ;

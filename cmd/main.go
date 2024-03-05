@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	"skabillium.io/auth-service/cmd/api/auth"
@@ -18,12 +19,7 @@ import (
 	_ "skabillium.io/auth-service/cmd/docs"
 )
 
-func init() {
-	err := godotenv.Load()
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
-}
+var defaultCtx = context.Background()
 
 type Validator struct {
 	validator *validator.Validate
@@ -35,6 +31,22 @@ func (v *Validator) Validate(i interface{}) error {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 	return nil
+}
+
+func init() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+}
+
+func RedisClient() (*redis.Client, error) {
+	redisClient := redis.NewClient(&redis.Options{Addr: os.Getenv("REDIS_URL")})
+	if _, err := redisClient.Ping(defaultCtx).Result(); err != nil {
+		return nil, err
+	}
+
+	return redisClient, nil
 }
 
 // @title Auth service
@@ -49,17 +61,18 @@ func (v *Validator) Validate(i interface{}) error {
 // @in header
 // @name Authorization
 func main() {
-	// Connect to database
-	ctx := context.Background()
-
-	conn, err := pgx.Connect(ctx, os.Getenv("POSTGRES_URL"))
+	conn, err := pgx.Connect(defaultCtx, os.Getenv("POSTGRES_URL"))
 	if err != nil {
-		// TODO: Handle this differently
 		panic(err)
 	}
-	defer conn.Close(ctx)
-
 	queries := db.New(conn)
+	defer conn.Close(defaultCtx)
+
+	redisClient, err := RedisClient()
+	if err != nil {
+		panic(err)
+	}
+	defer redisClient.Close()
 
 	e := echo.New()
 	e.Validator = &Validator{validator: validator.New()}
@@ -70,7 +83,7 @@ func main() {
 	v1.GET("/status", health.GetHealth)
 	v1.GET("/swagger*", echoSwagger.WrapHandler)
 
-	auth.InitAuth(v1, queries, ctx)
+	auth.InitAuth(v1, queries, redisClient, defaultCtx)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))

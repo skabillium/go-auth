@@ -13,11 +13,13 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/crypto/bcrypt"
 	"skabillium.io/auth-service/cmd/db"
 )
 
 var queries *db.Queries
+var redisClient *redis.Client
 var ctx context.Context
 
 type ErrorResponse struct {
@@ -25,19 +27,21 @@ type ErrorResponse struct {
 	Error   string `json:"error"`
 }
 
-func InitAuth(g *echo.Group, q *db.Queries, contx context.Context) {
+func InitAuth(g *echo.Group, q *db.Queries, r *redis.Client, contx context.Context) {
 	queries = q
+	redisClient = r
 	ctx = contx
 
 	IsLoggedIn := echojwt.JWT([]byte(os.Getenv("JWT_SECRET")))
 
-	g.POST("/auth/register", Register)
-	g.POST("/auth/login", Login)
-	g.POST("/auth/forgot-password", ForgotPassword)
-	g.POST("/auth/reset-password", ResetPassword)
-
 	g.GET("/auth/verify-email/:token", VerifyEmail)
 	g.GET("/auth/refresh", Refresh, IsLoggedIn)
+
+	g.POST("/auth/register", Register)
+	g.POST("/auth/login", Login)
+	g.POST("/auth/logout", Logout, IsLoggedIn)
+	g.POST("/auth/forgot-password", ForgotPassword)
+	g.POST("/auth/reset-password", ResetPassword)
 
 	g.PATCH("/auth/password", UpdatePassword, IsLoggedIn)
 }
@@ -96,7 +100,6 @@ type GenerateJwtOptions struct {
 }
 
 func GenerateJwt(options GenerateJwtOptions) (string, error) {
-	// TODO: Add refresh token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"id":           options.ID,
 		"email":        options.Email,
@@ -106,6 +109,8 @@ func GenerateJwt(options GenerateJwtOptions) (string, error) {
 
 	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
 }
+
+func MapJwtToProps(token string) {}
 
 // @Tags Auth
 // @Description Register a new user
@@ -471,6 +476,44 @@ func ResendVerificationEmail(c echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+// @Tags Auth
+// @Description Logout
+// @Security BearerAuth
+// @Success 204
+// @Router /auth/logout [POST]
 func Logout(c echo.Context) error {
-	return echo.NewHTTPError(http.StatusNotImplemented, "Method not implemented")
+
+	/*
+		TODO:
+		- Delete refresh token
+		- Add jwt to blacklist
+	*/
+
+	// TODO: Find a better way to decode tokens
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
+	}
+
+	id, ok := claims["id"].(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching token")
+	}
+
+	userUuid, err := uuid.Parse(id)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError)
+	}
+
+	err = queries.RemoveUserRefreshTokenById(ctx, pgtype.UUID{Bytes: userUuid, Valid: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while logging out")
+	}
+
+	return c.NoContent(http.StatusNoContent)
 }

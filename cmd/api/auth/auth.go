@@ -6,6 +6,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
@@ -69,6 +70,11 @@ func GenerateRandomString(length int) string {
 
 func UuidToString(uid pgtype.UUID) string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", uid.Bytes[0:4], uid.Bytes[4:6], uid.Bytes[6:8], uid.Bytes[8:10], uid.Bytes[10:16])
+}
+
+func BlacklistToken(token string) error {
+	const BlacklistPrefix = "blacklist:"
+	return redisClient.Set(ctx, BlacklistPrefix+token, "true", 24*time.Hour).Err()
 }
 
 func HashPassword(password string) (string, error) {
@@ -514,6 +520,10 @@ func Logout(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, "Error while logging out")
 	}
+
+	// Get token string from header
+	jwtStr := strings.Split(c.Request().Header.Get("Authorization"), " ")[1]
+	BlacklistToken(jwtStr)
 
 	return c.NoContent(http.StatusNoContent)
 }

@@ -241,6 +241,36 @@ const docTemplate = `{
                 }
             }
         },
+        "/profile/picture": {
+            "patch": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register a new user",
+                "consumes": [
+                    "multipart/form-data"
+                ],
+                "tags": [
+                    "Profile"
+                ],
+                "parameters": [
+                    {
+                        "type": "file",
+                        "description": "Profile picture file",
+                        "name": "profilePicture",
+                        "in": "formData",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/status": {
             "get": {
                 "description": "Check the status of the server",

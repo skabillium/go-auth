@@ -15,6 +15,7 @@ import (
 
 	"skabillium.io/auth-service/cmd/api/auth"
 	"skabillium.io/auth-service/cmd/api/health"
+	"skabillium.io/auth-service/cmd/api/profile"
 	"skabillium.io/auth-service/cmd/db"
 	_ "skabillium.io/auth-service/cmd/docs"
 	"skabillium.io/auth-service/cmd/middleware"
@@ -81,6 +82,7 @@ func main() {
 	middleware.InitMiddleware(defaultCtx, redisClient)
 
 	e.Use(middleware.IsBlacklisted)
+	e.Static("uploads", profile.UploadsDir)
 
 	v1 := e.Group("v1")
 
@@ -89,6 +91,7 @@ func main() {
 	v1.GET("/swagger*", echoSwagger.WrapHandler)
 
 	auth.InitAuth(v1, queries, redisClient, defaultCtx)
+	profile.InitProfileHandlers(v1, queries)
 
 	// Start server
 	e.Logger.Fatal(e.Start(":" + os.Getenv("PORT")))

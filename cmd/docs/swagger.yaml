@@ -221,6 +221,24 @@ paths:
       - BearerAuth: []
       tags:
       - Auth
+  /profile/picture:
+    patch:
+      consumes:
+      - multipart/form-data
+      description: Register a new user
+      parameters:
+      - description: Profile picture file
+        in: formData
+        name: profilePicture
+        required: true
+        type: file
+      responses:
+        "204":
+          description: No Content
+      security:
+      - BearerAuth: []
+      tags:
+      - Profile
   /status:
     get:
       description: Check the status of the server

@@ -32,3 +32,6 @@ id = $1 ;
 -- name: RemoveUserRefreshTokenById :exec
 UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL WHERE 
 id = $1 ;
+
+-- name: UpdateUserProfilePictureById :exec
+UPDATE users SET profile_picture = $2 WHERE id = $1 ;

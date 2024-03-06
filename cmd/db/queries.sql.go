@@ -207,6 +207,20 @@ func (q *Queries) UpdateUserPasswordResetInfoById(ctx context.Context, arg Updat
 	return err
 }
 
+const updateUserProfilePictureById = `-- name: UpdateUserProfilePictureById :exec
+UPDATE users SET profile_picture = $2 WHERE id = $1
+`
+
+type UpdateUserProfilePictureByIdParams struct {
+	ID             pgtype.UUID
+	ProfilePicture pgtype.Text
+}
+
+func (q *Queries) UpdateUserProfilePictureById(ctx context.Context, arg UpdateUserProfilePictureByIdParams) error {
+	_, err := q.db.Exec(ctx, updateUserProfilePictureById, arg.ID, arg.ProfilePicture)
+	return err
+}
+
 const verifyUserById = `-- name: VerifyUserById :exec
 UPDATE users SET email_verified='t' WHERE id = $1
 `

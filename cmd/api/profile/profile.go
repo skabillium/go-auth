@@ -29,18 +29,12 @@ var (
 	ctx     = context.Background()
 )
 
-func dirExists(path string) bool {
-	_, err := os.Stat(path)
-	return !os.IsNotExist(err)
-
-}
-
 func InitProfileHandlers(g *echo.Group, q *db.Queries) {
 	queries = q
 	IsLoggedIn := echojwt.JWT([]byte(os.Getenv("JWT_SECRET")))
 
 	// Initialize uploads directory if not present
-	if !dirExists(UploadsDir) {
+	if !util.DirExists(UploadsDir) {
 		err := os.Mkdir(UploadsDir, os.ModePerm)
 		if err != nil {
 			panic(err)

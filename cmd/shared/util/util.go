@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"math/rand"
+	"os"
 
 	"github.com/jackc/pgx/v5/pgtype"
 )
@@ -18,4 +19,9 @@ func GenerateRandomString(length int) string {
 		b[i] = letterBytes[rand.Intn(len(letterBytes))]
 	}
 	return string(b)
+}
+
+func DirExists(path string) bool {
+	_, err := os.Stat(path)
+	return !os.IsNotExist(err)
 }

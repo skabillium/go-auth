@@ -167,6 +167,30 @@ func (q *Queries) GetUserPasswordResetInfo(ctx context.Context, resetPasswordTok
 	return i, err
 }
 
+const getUserProfileById = `-- name: GetUserProfileById :one
+SELECT id, email, email_verified, profile_picture FROM users
+WHERE id = $1
+`
+
+type GetUserProfileByIdRow struct {
+	ID             pgtype.UUID
+	Email          string
+	EmailVerified  bool
+	ProfilePicture pgtype.Text
+}
+
+func (q *Queries) GetUserProfileById(ctx context.Context, id pgtype.UUID) (GetUserProfileByIdRow, error) {
+	row := q.db.QueryRow(ctx, getUserProfileById, id)
+	var i GetUserProfileByIdRow
+	err := row.Scan(
+		&i.ID,
+		&i.Email,
+		&i.EmailVerified,
+		&i.ProfilePicture,
+	)
+	return i, err
+}
+
 const removeUserRefreshTokenById = `-- name: RemoveUserRefreshTokenById :exec
 UPDATE users SET refresh_token = NULL, refresh_token_expires_at = NULL WHERE 
 id = $1

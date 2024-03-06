@@ -51,6 +51,7 @@ func InitProfileHandlers(g *echo.Group, q *db.Queries) {
 		}
 	}
 
+	g.GET("/profile", GetProfile, IsLoggedIn)
 	g.PATCH("/profile/picture", UpdateProfilePicture, IsLoggedIn)
 }
 
@@ -85,8 +86,56 @@ func CopyToUploads(file *multipart.FileHeader) (*UploadedFile, error) {
 	return &UploadedFile{name: fullname, path: fullpath}, nil
 }
 
+type GetProfileResponse struct {
+	ID             string `json:"id"`
+	Email          string `json:"email"`
+	EmailVerified  bool   `json:"emailVerified"`
+	ProfilePicture string `json:"profilePicture"`
+}
+
 // @Tags Profile
 // @Description Register a new user
+// @Security BearerAuth
+// @Success 200 {object} GetProfileResponse
+// @Router /profile [GET]
+func GetProfile(c echo.Context) error {
+
+	token, ok := c.Get("user").(*jwt.Token)
+	if !ok {
+		fmt.Println(c.Request().Header.Get("Authorization"))
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching token")
+	}
+
+	claims, ok := token.Claims.(jwt.MapClaims)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while fetching claims")
+	}
+
+	userIdStr, ok := claims["id"].(string)
+	if !ok {
+		return echo.NewHTTPError(http.StatusBadRequest, "Error while getting id from token")
+	}
+
+	userUuid, err := uuid.Parse(userIdStr)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while parsing id")
+	}
+
+	user, err := queries.GetUserProfileById(ctx, pgtype.UUID{Bytes: userUuid, Valid: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, "Error while fetching profile")
+	}
+
+	return c.JSON(http.StatusOK, GetProfileResponse{
+		ID:             auth.UuidToString(user.ID),
+		Email:          user.Email,
+		EmailVerified:  user.EmailVerified,
+		ProfilePicture: user.ProfilePicture.String,
+	})
+}
+
+// @Tags Profile
+// @Description Update profile picture
 // @Security BearerAuth
 // @Success 204
 // @Error 400

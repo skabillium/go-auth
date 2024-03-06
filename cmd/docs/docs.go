@@ -241,6 +241,27 @@ const docTemplate = `{
                 }
             }
         },
+        "/profile": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Register a new user",
+                "tags": [
+                    "Profile"
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/profile.GetProfileResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/profile/picture": {
             "patch": {
                 "security": [
@@ -248,7 +269,7 @@ const docTemplate = `{
                         "BearerAuth": []
                     }
                 ],
-                "description": "Register a new user",
+                "description": "Update profile picture",
                 "consumes": [
                     "multipart/form-data"
                 ],
@@ -399,6 +420,23 @@ const docTemplate = `{
             ],
             "properties": {
                 "password": {
+                    "type": "string"
+                }
+            }
+        },
+        "profile.GetProfileResponse": {
+            "type": "object",
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "emailVerified": {
+                    "type": "boolean"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "profilePicture": {
                     "type": "string"
                 }
             }

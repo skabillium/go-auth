@@ -3,3 +3,6 @@ bin/
 
 # Environment
 .env
+
+# Uploads
+uploads/

@@ -18,6 +18,10 @@ SELECT * FROM users WHERE refresh_token = $1 ;
 -- name: GetUserPasswordResetInfo :one
 SELECT id, reset_password_expires_at FROM users WHERE reset_password_token = $1 ;
 
+-- name: GetUserProfileById :one
+SELECT id, email, email_verified, profile_picture FROM users
+WHERE id = $1 ;
+
 -- name: VerifyUserById :exec
 UPDATE users SET email_verified='t' WHERE id = $1 ;
 

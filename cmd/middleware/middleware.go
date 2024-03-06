@@ -7,16 +7,15 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
+	"skabillium.io/auth-service/cmd/shared/blacklist"
 )
 
 var (
-	ctx         context.Context
-	redisClient *redis.Client
+	blist *blacklist.BlacklistService
 )
 
-func InitMiddleware(contx context.Context, r *redis.Client) {
-	ctx = contx
-	redisClient = r
+func InitMiddleware(ctx context.Context, redisClient *redis.Client) {
+	blist = blacklist.NewBlacklistService(ctx, redisClient)
 }
 
 func IsBlacklisted(next echo.HandlerFunc) echo.HandlerFunc {
@@ -27,13 +26,12 @@ func IsBlacklisted(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 
 		tokenStr := strings.Split(authHeader, " ")[1]
-		redisKey := "blacklist:" + tokenStr
-		exists, err := redisClient.Exists(ctx, redisKey).Result()
+		exists, err := blist.Has(tokenStr)
 		if err != nil {
 			return echo.NewHTTPError(http.StatusInternalServerError)
 		}
 
-		if exists == 1 {
+		if exists {
 			return echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized access, pleased log in again")
 		}
 

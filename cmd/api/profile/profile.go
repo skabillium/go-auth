@@ -18,8 +18,8 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"skabillium.io/auth-service/cmd/api/auth"
 	"skabillium.io/auth-service/cmd/db"
+	"skabillium.io/auth-service/cmd/shared/util"
 )
 
 const UploadsDir = "uploads"
@@ -31,11 +31,7 @@ var (
 
 func dirExists(path string) bool {
 	_, err := os.Stat(path)
-	if os.IsNotExist(err) {
-		return false
-	}
-
-	return true
+	return !os.IsNotExist(err)
 
 }
 
@@ -69,7 +65,7 @@ func CopyToUploads(file *multipart.FileHeader) (*UploadedFile, error) {
 
 	splitted := strings.Split(file.Filename, ".")
 	ext := splitted[len(splitted)-1]
-	name := strconv.Itoa(int(time.Now().Unix())) + "-" + auth.GenerateRandomString(10)
+	name := strconv.Itoa(int(time.Now().Unix())) + "-" + util.GenerateRandomString(10)
 	fullname := name + "." + ext
 	fullpath := path.Join(UploadsDir, fullname)
 
@@ -127,7 +123,7 @@ func GetProfile(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, GetProfileResponse{
-		ID:             auth.UuidToString(user.ID),
+		ID:             util.UuidToString(user.ID),
 		Email:          user.Email,
 		EmailVerified:  user.EmailVerified,
 		ProfilePicture: user.ProfilePicture.String,

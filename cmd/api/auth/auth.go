@@ -2,8 +2,6 @@ package auth
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -15,13 +13,18 @@ import (
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
 	"github.com/redis/go-redis/v9"
-	"golang.org/x/crypto/bcrypt"
 	"skabillium.io/auth-service/cmd/db"
+	"skabillium.io/auth-service/cmd/shared/blacklist"
+	"skabillium.io/auth-service/cmd/shared/tokens"
+	"skabillium.io/auth-service/cmd/shared/util"
 )
 
-var queries *db.Queries
-var redisClient *redis.Client
-var ctx context.Context
+var (
+	queries     *db.Queries
+	redisClient *redis.Client
+	blist       *blacklist.BlacklistService
+	ctx         context.Context
+)
 
 type ErrorResponse struct {
 	Message string `json:"message"`
@@ -32,6 +35,7 @@ func InitAuth(g *echo.Group, q *db.Queries, r *redis.Client, contx context.Conte
 	queries = q
 	redisClient = r
 	ctx = contx
+	blist = blacklist.NewBlacklistService(ctx, redisClient)
 
 	IsLoggedIn := echojwt.JWT([]byte(os.Getenv("JWT_SECRET")))
 
@@ -59,65 +63,6 @@ type CreateUserResponse struct {
 	RefreshToken string `json:"refreshToken"`
 }
 
-func GenerateRandomString(length int) string {
-	const letterBytes = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	b := make([]byte, length)
-	for i := range b {
-		b[i] = letterBytes[rand.Intn(len(letterBytes))]
-	}
-	return string(b)
-}
-
-func UuidToString(uid pgtype.UUID) string {
-	return fmt.Sprintf("%x-%x-%x-%x-%x", uid.Bytes[0:4], uid.Bytes[4:6], uid.Bytes[6:8], uid.Bytes[8:10], uid.Bytes[10:16])
-}
-
-func BlacklistToken(token string) error {
-	const BlacklistPrefix = "blacklist:"
-	return redisClient.Set(ctx, BlacklistPrefix+token, "true", 24*time.Hour).Err()
-}
-
-func HashPassword(password string) (string, error) {
-	bytes, err := bcrypt.GenerateFromPassword([]byte(password), 14)
-	return string(bytes), err
-}
-
-func ComparePassword(password string, hash string) (bool, error) {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password))
-	if err != nil {
-		if err == bcrypt.ErrMismatchedHashAndPassword {
-			return false, nil
-		}
-
-		return false, err
-	}
-
-	return true, nil
-}
-
-func GenerateRefreshToken() string {
-	return GenerateRandomString(100)
-}
-
-type GenerateJwtOptions struct {
-	ID           string
-	Email        string
-	RefreshToken string
-}
-
-func GenerateJwt(options GenerateJwtOptions) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":           options.ID,
-		"email":        options.Email,
-		"refreshToken": options.RefreshToken,
-		"exp":          time.Now().Add(time.Hour * 24).Unix(),
-	})
-
-	return token.SignedString([]byte(os.Getenv("JWT_SECRET")))
-}
-
-func MapJwtToProps(token string) {}
-
 // @Tags Auth
 // @Description Register a new user
 // @Success 201 {object} CreateUserResponse
@@ -125,11 +70,7 @@ func MapJwtToProps(token string) {}
 // @Error 400 {object} ErrorResponse
 // @Router /auth/register [POST]
 func Register(c echo.Context) error {
-	/*
-		TODO:
-		- Send verification email
-		- Handle profile picture
-	*/
+	// TODO: Send verification email
 
 	// Validate request
 	createUserReq := new(CreateUserRequest)
@@ -140,12 +81,12 @@ func Register(c echo.Context) error {
 		return err
 	}
 
-	passwordHash, err := HashPassword(createUserReq.Password)
+	passwordHash, err := util.HashPassword(createUserReq.Password)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating user")
 	}
 
-	refreshToken := GenerateRefreshToken()
+	refreshToken := tokens.GenerateRefreshToken()
 	user, err := queries.CreateUser(ctx, db.CreateUserParams{
 		ID: pgtype.UUID{
 			Bytes: uuid.New(),
@@ -153,7 +94,7 @@ func Register(c echo.Context) error {
 		},
 		Email:                  createUserReq.Email,
 		PasswordHash:           passwordHash,
-		EmailVerificationToken: pgtype.Text{String: GenerateRandomString(12), Valid: true},
+		EmailVerificationToken: pgtype.Text{String: util.GenerateRandomString(12), Valid: true},
 		RefreshToken:           pgtype.Text{String: refreshToken, Valid: true},
 		RefreshTokenExpiresAt:  pgtype.Timestamp{Time: time.Now().AddDate(0, 1, 0), Valid: true},
 	})
@@ -162,7 +103,7 @@ func Register(c echo.Context) error {
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-		"id":           UuidToString(user.ID),
+		"id":           util.UuidToString(user.ID),
 		"email":        user.Email,
 		"refreshToken": refreshToken,
 		"exp":          time.Now().Add(time.Hour * 24).Unix(),
@@ -174,7 +115,7 @@ func Register(c echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, CreateUserResponse{
-		ID: UuidToString(user.ID), Email: user.Email, Token: tokenStr,
+		ID: util.UuidToString(user.ID), Email: user.Email, Token: tokenStr,
 		RefreshToken: refreshToken,
 	})
 }
@@ -210,7 +151,7 @@ func Login(c echo.Context) error {
 		return err
 	}
 
-	isCorrect, err := ComparePassword(loginReq.Password, user.PasswordHash)
+	isCorrect, err := util.ComparePassword(loginReq.Password, user.PasswordHash)
 	if err != nil {
 		return err
 	}
@@ -223,9 +164,9 @@ func Login(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusUnauthorized, "User not verified")
 	}
 
-	userId := UuidToString(user.ID)
-	refreshToken := GenerateRefreshToken() // TODO: Save token to db
-	token, err := GenerateJwt(GenerateJwtOptions{
+	userId := util.UuidToString(user.ID)
+	refreshToken := tokens.GenerateRefreshToken() // TODO: Save token to db
+	token, err := util.GenerateJwt(util.GenerateJwtOptions{
 		ID:           userId,
 		Email:        user.Email,
 		RefreshToken: refreshToken,
@@ -284,7 +225,7 @@ func UpdatePassword(c echo.Context) error {
 		return err
 	}
 
-	passwordHash, err := HashPassword(updatePasswordReq.Password)
+	passwordHash, err := util.HashPassword(updatePasswordReq.Password)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
 	}
@@ -339,7 +280,7 @@ func ForgotPassword(c echo.Context) error {
 		return err
 	}
 
-	resetPasswordToken := GenerateRandomString(12)
+	resetPasswordToken := util.GenerateRandomString(12)
 	user, err := queries.GetUserByEmail(ctx, forgotPasswordReq.Email)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
@@ -387,7 +328,7 @@ func ResetPassword(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Password reset has expired")
 	}
 
-	passwordHash, err := HashPassword(resetPasswordReq.Password)
+	passwordHash, err := util.HashPassword(resetPasswordReq.Password)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while updating password")
 	}
@@ -437,8 +378,8 @@ func Refresh(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Refresh token has expired")
 	}
 
-	newToken, err := GenerateJwt(GenerateJwtOptions{
-		ID:           UuidToString(user.ID),
+	newToken, err := util.GenerateJwt(util.GenerateJwtOptions{
+		ID:           util.UuidToString(user.ID),
 		Email:        user.Email,
 		RefreshToken: refreshToken,
 	})
@@ -516,7 +457,7 @@ func Logout(c echo.Context) error {
 
 	// Get token string from header
 	jwtStr := strings.Split(c.Request().Header.Get("Authorization"), " ")[1]
-	BlacklistToken(jwtStr)
+	blist.Add(jwtStr)
 
 	return c.NoContent(http.StatusNoContent)
 }

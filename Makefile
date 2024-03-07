@@ -8,9 +8,13 @@ clean:
 docs:
 	swag init --dir ${DIR} --output ${DOCS_DIR}
 
+templ:
+	templ generate
+
 install:
-	go install
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest 
+	go install github.com/a-h/templ/cmd/templ@latest
+	go install
 
 build: clean docs
 	go build -o ${BIN} ${DIR}

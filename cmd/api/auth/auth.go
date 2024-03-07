@@ -15,6 +15,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"skabillium.io/auth-service/cmd/db"
 	"skabillium.io/auth-service/cmd/shared/blacklist"
+	"skabillium.io/auth-service/cmd/shared/email"
 	"skabillium.io/auth-service/cmd/shared/tokens"
 	"skabillium.io/auth-service/cmd/shared/util"
 )
@@ -70,8 +71,6 @@ type CreateUserResponse struct {
 // @Error 400 {object} ErrorResponse
 // @Router /auth/register [POST]
 func Register(c echo.Context) error {
-	// TODO: Send verification email
-
 	// Validate request
 	createUserReq := new(CreateUserRequest)
 	if err := c.Bind(createUserReq); err != nil {
@@ -87,6 +86,8 @@ func Register(c echo.Context) error {
 	}
 
 	refreshToken := tokens.GenerateRefreshToken()
+	verificationToken := util.GenerateRandomString(12)
+
 	user, err := queries.CreateUser(ctx, db.CreateUserParams{
 		ID: pgtype.UUID{
 			Bytes: uuid.New(),
@@ -94,7 +95,7 @@ func Register(c echo.Context) error {
 		},
 		Email:                  createUserReq.Email,
 		PasswordHash:           passwordHash,
-		EmailVerificationToken: pgtype.Text{String: util.GenerateRandomString(12), Valid: true},
+		EmailVerificationToken: pgtype.Text{String: verificationToken, Valid: true},
 		RefreshToken:           pgtype.Text{String: refreshToken, Valid: true},
 		RefreshTokenExpiresAt:  pgtype.Timestamp{Time: time.Now().AddDate(0, 1, 0), Valid: true},
 	})
@@ -113,6 +114,9 @@ func Register(c echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Error while creating jwt")
 	}
+
+	verificationUrl := os.Getenv("SERVER_URL") + "/v1/auth/verify-email/" + verificationToken
+	email.SendVerificationEmail(createUserReq.Email, verificationUrl)
 
 	return c.JSON(http.StatusCreated, CreateUserResponse{
 		ID: util.UuidToString(user.ID), Email: user.Email, Token: tokenStr,
@@ -294,7 +298,8 @@ func ForgotPassword(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusNotFound, err.Error())
 	}
 
-	// TODO: Send email
+	passwordResetUrl := os.Getenv("FRONTEND_URL") + "/reset-password/" + resetPasswordToken
+	email.SendPasswordResetEmail(user.Email, passwordResetUrl)
 
 	return c.NoContent(http.StatusNoContent)
 }
@@ -418,7 +423,8 @@ func ResendVerificationEmail(c echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "User already verified")
 	}
 
-	// TODO: Resend email
+	verificationUrl := os.Getenv("SERVER_URL") + "/v1/auth/verify-email/" + user.EmailVerificationToken.String
+	email.SendVerificationEmail(user.Email, verificationUrl)
 
 	return c.NoContent(http.StatusNoContent)
 }

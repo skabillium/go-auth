@@ -1,0 +1,18 @@
+package templates
+
+templ RegistrationEmail(url string) {
+    <h4>Welcome Aboard!</h4>
+    <p>
+    We would like to welcome you to the platform, just one step remains.
+    Click the link to verify your account: { url }
+    </p>
+}
+
+templ ResetPasswordEmail(url string) {
+    <p>Click the link to reset your password: { url }</p>
+}
+
+
+templ VerificationEmail(url string) {
+       <p>Click the link to verify your account: { url }</p> 
+}

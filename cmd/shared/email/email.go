@@ -1,11 +1,14 @@
 package email
 
 import (
+	"bytes"
+	"context"
 	"os"
 	"strings"
 
 	"github.com/sendgrid/sendgrid-go"
 	"github.com/sendgrid/sendgrid-go/helpers/mail"
+	"skabillium.io/auth-service/cmd/templates"
 )
 
 type SendEmailOptions struct {
@@ -54,21 +57,42 @@ func replaceSpecialChars(email string) string {
 	return strings.ReplaceAll(email, "@", "__")
 }
 
-func SendVerificationEmail(to string, url string) error {
+func SendRegistrationEmail(to string, url string) error {
+	var buffer bytes.Buffer
+	verificationEmailTemplate := templates.RegistrationEmail(url)
+	verificationEmailTemplate.Render(context.Background(), &buffer)
+
 	options := SendEmailOptions{
 		toMail:  to,
 		subject: "Welcome aboard",
-		text:    "",
-		html:    "<h5>Welcome Aboard</h5><p>Click the link to verify your account " + url + "</p>",
+		html:    buffer.String(),
+	}
+	return sendEmail(options)
+}
+
+func SendVerificationEmail(to string, url string) error {
+	var buffer bytes.Buffer
+	verificationEmailTemplate := templates.VerificationEmail(url)
+	verificationEmailTemplate.Render(context.Background(), &buffer)
+
+	options := SendEmailOptions{
+		toMail:  to,
+		subject: "Welcome aboard",
+		html:    buffer.String(),
 	}
 	return sendEmail(options)
 }
 
 func SendPasswordResetEmail(to string, url string) error {
+
+	var buffer bytes.Buffer
+	resetPasswordTemplate := templates.ResetPasswordEmail(url)
+	resetPasswordTemplate.Render(context.Background(), &buffer)
+
 	options := SendEmailOptions{
 		toMail:  to,
 		subject: "Reset password",
-		html:    "<p>Click the link to reset your password " + url + "</p>",
+		html:    buffer.String(),
 	}
 	return sendEmail(options)
 }

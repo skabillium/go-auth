@@ -116,7 +116,7 @@ func Register(c echo.Context) error {
 	}
 
 	verificationUrl := os.Getenv("SERVER_URL") + "/v1/auth/verify-email/" + verificationToken
-	email.SendVerificationEmail(createUserReq.Email, verificationUrl)
+	email.SendRegistrationEmail(createUserReq.Email, verificationUrl)
 
 	return c.JSON(http.StatusCreated, CreateUserResponse{
 		ID: util.UuidToString(user.ID), Email: user.Email, Token: tokenStr,

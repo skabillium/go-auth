@@ -14,10 +14,10 @@ import (
 	echoSwagger "github.com/swaggo/echo-swagger"
 
 	"skabillium.io/auth-service/cmd/api/auth"
+	_ "skabillium.io/auth-service/cmd/api/docs"
 	"skabillium.io/auth-service/cmd/api/health"
 	"skabillium.io/auth-service/cmd/api/profile"
 	"skabillium.io/auth-service/cmd/db"
-	_ "skabillium.io/auth-service/cmd/docs"
 	"skabillium.io/auth-service/cmd/middleware"
 )
 

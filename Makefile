@@ -1,6 +1,6 @@
 BIN = ./bin/auth
 DIR = ./cmd
-DOCS_DIR = ${DIR}/docs
+DOCS_DIR = ${DIR}/api/docs
 
 clean:
 	rm -rf ${DOCS_DIR}
